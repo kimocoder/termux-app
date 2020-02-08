@@ -45,6 +45,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.termux.BuildConfig;
 import com.termux.R;
 import com.termux.terminal.EmulatorDebug;
 import com.termux.terminal.TerminalColors;
@@ -605,7 +606,7 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         } else {
             TerminalSession currentSession = getCurrentTermSession();
             String workingDirectory = (currentSession == null) ? null : currentSession.getCwd();
-            TerminalSession newSession = mTermService.createTermSession(null, null, workingDirectory, failSafe);
+            TerminalSession newSession = mTermService.createTermSession(BuildConfig.DEFAULT_EXECUTABLE_PATH, null, workingDirectory, failSafe);
             if (sessionName != null) {
                 newSession.mSessionName = sessionName;
             }

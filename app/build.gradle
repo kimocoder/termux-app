@@ -2,6 +2,13 @@ plugins {
   id "com.android.application"
 }
 
+def getDefaultExecutablePath() {
+    if (project.hasProperty("com.termux.defaultExecutablePath")) {
+        return "\"${project.getProperty("com.termux.defaultExecutablePath")}\""
+    }
+    return "null"
+}
+
 android {
     compileSdkVersion 28
 
@@ -42,12 +49,14 @@ android {
 
     buildTypes {
         release {
+            buildConfigField 'String', 'DEFAULT_EXECUTABLE_PATH', "null"
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
 
         debug {
+            buildConfigField 'String', 'DEFAULT_EXECUTABLE_PATH', getDefaultExecutablePath()
             signingConfig signingConfigs.debug
         }
     }
