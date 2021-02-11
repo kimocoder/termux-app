@@ -2,6 +2,7 @@ package com.termux.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.TypedValue;
@@ -9,6 +10,7 @@ import android.widget.Toast;
 import com.termux.terminal.TerminalSession;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,10 +20,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import androidx.annotation.IntDef;
+
+import static com.termux.terminal.EmulatorDebug.LOG_TAG;
 
 final class TermuxPreferences {
 
@@ -58,9 +65,12 @@ final class TermuxPreferences {
     private static final String CURRENT_SESSION_KEY = "current_session";
     private static final String SCREEN_ALWAYS_ON_KEY = "screen_always_on";
 
-    private String mUseDarkUI;
+    private boolean mUseDarkUI;
     private boolean mScreenAlwaysOn;
     private int mFontSize;
+
+    private boolean mUseFullScreen;
+    private boolean mUseFullScreenWorkAround;
 
     @AsciiBellBehaviour
     int mBellBehaviour = BELL_VIBRATE;
@@ -68,8 +78,9 @@ final class TermuxPreferences {
     boolean mBackIsEscape;
     boolean mDisableVolumeVirtualKeys;
     boolean mShowExtraKeys;
+    String mDefaultWorkingDir;
 
-    String[][] mExtraKeys;
+    ExtraKeysInfos mExtraKeys;
 
     final List<KeyboardShortcut> shortcuts = new ArrayList<>();
 
@@ -103,7 +114,7 @@ final class TermuxPreferences {
         } catch (NumberFormatException | ClassCastException e) {
             mFontSize = defaultFontSize;
         }
-        mFontSize = clamp(mFontSize, MIN_FONTSIZE, MAX_FONTSIZE); 
+        mFontSize = clamp(mFontSize, MIN_FONTSIZE, MAX_FONTSIZE);
     }
 
     boolean toggleShowExtraKeys(Context context) {
@@ -129,7 +140,15 @@ final class TermuxPreferences {
     }
 
     boolean isUsingBlackUI() {
-        return mUseDarkUI.toLowerCase().equals("true");
+        return mUseDarkUI;
+    }
+
+    boolean isUsingFullScreen() {
+        return mUseFullScreen;
+    }
+
+    boolean isUsingFullScreenWorkAround() {
+        return mUseFullScreenWorkAround;
     }
 
     void setScreenAlwaysOn(Context context, boolean newValue) {
@@ -149,7 +168,7 @@ final class TermuxPreferences {
         }
         return null;
     }
-    
+
     void reloadFromProperties(Context context) {
         File propsFile = new File(TermuxService.HOME_PATH + "/.termux/termux.properties");
         if (!propsFile.exists())
@@ -162,8 +181,8 @@ final class TermuxPreferences {
                     props.load(new InputStreamReader(in, StandardCharsets.UTF_8));
                 }
             }
-        } catch (IOException e) {
-            Toast.makeText(context, "Could not open properties file termux.properties.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(context, "Could not open properties file termux.properties: " + e.getMessage(), Toast.LENGTH_LONG).show();
             Log.e("termux", "Error loading props", e);
         }
 
@@ -179,23 +198,46 @@ final class TermuxPreferences {
                 break;
         }
 
-        mUseDarkUI = props.getProperty("use-black-ui", "false");
+        switch (props.getProperty("use-black-ui", "").toLowerCase()) {
+            case "true":
+                mUseDarkUI = true;
+                break;
+            case "false":
+                mUseDarkUI = false;
+                break;
+            default:
+                int nightMode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+                mUseDarkUI = nightMode == Configuration.UI_MODE_NIGHT_YES;
+        }
+
+        mUseFullScreen = "true".equals(props.getProperty("fullscreen", "false").toLowerCase());
+        mUseFullScreenWorkAround = "true".equals(props.getProperty("use-fullscreen-workaround", "false").toLowerCase());
+
+        mDefaultWorkingDir = props.getProperty("default-working-directory", TermuxService.HOME_PATH);
+        File workDir = new File(mDefaultWorkingDir);
+        if (!workDir.exists() || !workDir.isDirectory()) {
+            // Fallback to home directory if user configured working directory is not exist
+            // or is a regular file.
+            mDefaultWorkingDir = TermuxService.HOME_PATH;
+        }
+
+        String defaultExtraKeys = "[[ESC, TAB, CTRL, ALT, {key: '-', popup: '|'}, DOWN, UP]]";
 
         try {
-            JSONArray arr = new JSONArray(props.getProperty("extra-keys", "[['ESC', 'TAB', 'CTRL', 'ALT', '-', 'DOWN', 'UP']]"));
-
-            mExtraKeys = new String[arr.length()][];
-            for (int i = 0; i < arr.length(); i++) {
-                JSONArray line = arr.getJSONArray(i);
-                mExtraKeys[i] = new String[line.length()];
-                for (int j = 0; j < line.length(); j++) {
-                    mExtraKeys[i][j] = line.getString(j);
-                }
-            }
+            String extrakeyProp = props.getProperty("extra-keys", defaultExtraKeys);
+            String extraKeysStyle = props.getProperty("extra-keys-style", "default");
+            mExtraKeys = new ExtraKeysInfos(extrakeyProp, extraKeysStyle);
         } catch (JSONException e) {
             Toast.makeText(context, "Could not load the extra-keys property from the config: " + e.toString(), Toast.LENGTH_LONG).show();
             Log.e("termux", "Error loading props", e);
-            mExtraKeys = new String[0][];
+
+            try {
+                mExtraKeys = new ExtraKeysInfos(defaultExtraKeys, "default");
+            } catch (JSONException e2) {
+                e2.printStackTrace();
+                Toast.makeText(context, "Can't create default extra keys", Toast.LENGTH_LONG).show();
+                mExtraKeys = null;
+            }
         }
 
         mBackIsEscape = "escape".equals(props.getProperty("back-key", "back"));

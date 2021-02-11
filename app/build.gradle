@@ -3,31 +3,36 @@ plugins {
 }
 
 android {
-    compileSdkVersion 28
-    ndkVersion '21.0.6113669'
+    compileSdkVersion project.properties.compileSdkVersion.toInteger()
+    ndkVersion project.properties.ndkVersion
 
     dependencies {
         implementation "androidx.annotation:annotation:1.1.0"
         implementation "androidx.viewpager:viewpager:1.0.0"
-        implementation "androidx.drawerlayout:drawerlayout:1.0.0"
+        implementation "androidx.drawerlayout:drawerlayout:1.1.1"
         implementation project(":terminal-view")
     }
 
     defaultConfig {
         applicationId "com.termux"
-        minSdkVersion 24
-        targetSdkVersion 28
-        versionCode 94
-        versionName "0.94"
+        minSdkVersion project.properties.minSdkVersion.toInteger()
+        targetSdkVersion project.properties.targetSdkVersion.toInteger()
+        versionCode 107
+        versionName "0.107"
 
         externalNativeBuild {
             ndkBuild {
                 cFlags "-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections"
             }
         }
+    }
 
-        ndk {
-            abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+    splits {
+        abi {
+            enable true
+
+            reset ()
+            include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
         }
 
     }
@@ -64,6 +69,10 @@ android {
         }
     }
 
+    lintOptions {
+        disable 'ProtectedPermissions'
+    }
+
     testOptions {
         unitTests {
             includeAndroidResources = true
@@ -72,8 +81,8 @@ android {
 }
 
 dependencies {
-    testImplementation 'junit:junit:4.13'
-    testImplementation 'org.robolectric:robolectric:4.3.1'
+    testImplementation 'junit:junit:4.13.1'
+    testImplementation 'org.robolectric:robolectric:4.4'
 }
 
 task versionName {
@@ -82,7 +91,7 @@ task versionName {
   }
 }
 
-def downloadBootstrap(String arch, String expectedChecksum, int version) {
+def downloadBootstrap(String arch, String expectedChecksum, String version) {
     def digest = java.security.MessageDigest.getInstance("SHA-256")
 
     def localUrl = "src/main/cpp/bootstrap-" + arch + ".zip"
@@ -104,7 +113,7 @@ def downloadBootstrap(String arch, String expectedChecksum, int version) {
         }
     }
 
-    def remoteUrl = "https://bintray.com/termux/bootstrap/download_file?file_path=bootstrap-" + arch + "-v" + version + ".zip"
+    def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
     logger.quiet("Downloading " + remoteUrl + " ...")
 
     file.parentFile.mkdirs()
@@ -133,11 +142,11 @@ clean {
 
 task downloadBootstraps(){
     doLast {
-        def version = 21
-        downloadBootstrap("aarch64", "9d362f1396e3a7d6987f09b8c3886c5aad514ab195ec7874a32000dc3b9cecde", version)
-        downloadBootstrap("arm",     "3c2f2ca9424fc984a4df54a3f9b38db3413b635ba39b89dfd8c753418730f719", version)
-        downloadBootstrap("i686",    "87afbd0fe6ebdc3abd9f2e5bc6136dbbf49991e485c9e9b03c4fe0149543ed7d", version)
-        downloadBootstrap("x86_64",  "bc91e5524d516cbe34b2ef082f6ebda1146457c8fa0373d06f7a1bb0c7be41df", version)
+        def version = "2021.02.11-r1"
+        downloadBootstrap("aarch64", "8913a0f6304b497a8e237a7a38cef17da39a8f39836fd63aa2ff7d9e4ae128a3", version)
+        downloadBootstrap("arm",     "c253fdbe7086ad1ae1826779465c30ca8bda6564536f4d00735b26ea3f6c1b7e", version)
+        downloadBootstrap("i686",    "931dc7ed8d208eae0a7445959356d761dc1644e2cc1ebb1f33688540f8c1c68a", version)
+        downloadBootstrap("x86_64",  "ac7e3809bc919a81b903bb22693e09afcbe126e6604883648cbeda48e6ba9665", version)
     }
 }
 

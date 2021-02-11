@@ -1,6 +1,14 @@
 name: Build
 
-on: push
+on:
+  push:
+    branches:
+      - master
+      - android-10
+  pull_request:
+    branches:
+      - master
+      - android-10
 
 jobs:
   build:
@@ -12,7 +20,7 @@ jobs:
       run: |
         ./gradlew assembleDebug
     - name: Store generated APK file
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
         name: termux-app
-        path: ./app/build/outputs/apk/debug/app-debug.apk
+        path: ./app/build/outputs/apk/debug

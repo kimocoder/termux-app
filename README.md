@@ -14,13 +14,18 @@ Note that this repository is for the app itself (the user interface and the
 terminal emulation). For the packages installable inside the app, see
 [termux/termux-packages](https://github.com/termux/termux-packages)
 
+***
+
+**@termux is looking for Termux Application maintainer for implementing new features,
+fixing bugs and reviewing pull requests since current one (@fornwall) is inactive.**
+
+Issue https://github.com/termux/termux-app/issues/1072 needs extra attention.
+
+***
+
 ## Installation
 
-Termux:Widget application can be obtained from:
-
-- [Google Play](https://play.google.com/store/apps/details?id=com.termux)
-- [F-Droid](https://f-droid.org/en/packages/com.termux/)
-- [Kali Nethunter Store](https://store.nethunter.com/en/packages/com.termux/)
+Termux application can be obtained from [F-Droid](https://f-droid.org/en/packages/com.termux/).
 
 Additionally we provide per-commit debug builds for those who want to try
 out the latest features or test their pull request. This build can be obtained
