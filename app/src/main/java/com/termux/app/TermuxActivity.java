@@ -45,6 +45,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.termux.BuildConfig;
 import com.termux.R;
 import com.termux.terminal.EmulatorDebug;
 import com.termux.terminal.TerminalColors;
@@ -490,12 +491,20 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                 TermuxInstaller.setupIfNeeded(TermuxActivity.this, () -> {
                     if (mTermService == null) return; // Activity might have been destroyed.
                     try {
-                        Bundle bundle = getIntent().getExtras();
+                        Intent intent = getIntent();
+                        Bundle bundle = intent.getExtras();
                         boolean launchFailsafe = false;
                         if (bundle != null) {
                             launchFailsafe = bundle.getBoolean(TERMUX_FAILSAFE_SESSION_ACTION, false);
                         }
-                        addNewSession(launchFailsafe, null);
+                        if (BuildConfig.DEBUG) {
+                            Uri executableUri = intent.getData();
+                            String executablePath = (executableUri == null ? null : executableUri.getPath());
+                            addNewSessionWithCommand(launchFailsafe, executablePath, null);
+                        }
+                        else {
+                            addNewSession(launchFailsafe, null);
+                        }
                     } catch (WindowManager.BadTokenException e) {
                         // Activity finished - ignore.
                     }
@@ -599,13 +608,17 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
     }
 
     void addNewSession(boolean failSafe, String sessionName) {
+        addNewSessionWithCommand(failSafe, null, sessionName);
+    }
+
+    void addNewSessionWithCommand(boolean failSafe, String executablePath, String sessionName) {
         if (mTermService.getSessions().size() >= MAX_SESSIONS) {
             new AlertDialog.Builder(this).setTitle(R.string.max_terminals_reached_title).setMessage(R.string.max_terminals_reached_message)
                 .setPositiveButton(android.R.string.ok, null).show();
         } else {
             TerminalSession currentSession = getCurrentTermSession();
             String workingDirectory = (currentSession == null) ? null : currentSession.getCwd();
-            TerminalSession newSession = mTermService.createTermSession(null, null, workingDirectory, failSafe);
+            TerminalSession newSession = mTermService.createTermSession(executablePath, null, workingDirectory, failSafe);
             if (sessionName != null) {
                 newSession.mSessionName = sessionName;
             }
